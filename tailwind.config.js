@@ -1,0 +1,70 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ["./app/**/*.{js,jsx}", "./components/**/*.{js,jsx}"],
+  theme: {
+    extend: {
+      colors: {
+        navy: {
+          deep: "#071A3D",
+          secondary: "#0D2A5C",
+          dark: "#05132D",
+          DEFAULT: "#071A3D",
+          800: "#0D2A5C",
+          900: "#071A3D",
+          950: "#05132D",
+        },
+        teal: {
+          50: "#F0FDFB",
+          100: "#CEF5F3",
+          200: "#9EEBE7",
+          300: "#5EDBD4",
+          400: "#2CD0C7",
+          500: "#16B8B0",
+          600: "#0F948F",
+          700: "#107572",
+          800: "#125C5A",
+          900: "#0D4442",
+          DEFAULT: "#16B8B0",
+          light: "#5EDBD4",
+        },
+        ink: {
+          50: "#F7F9FC",
+          100: "#EDF2F7",
+          200: "#DCE3ED",
+          300: "#CBD5E1",
+          400: "#94A3B8",
+          500: "#64748B",
+          600: "#475569",
+          700: "#334155",
+          800: "#1E293B",
+          900: "#0F172A",
+          950: "#0B1220",
+        },
+        brand: {
+          50: "#F0FDFB",
+          100: "#CEF5F3",
+          200: "#9EEBE7",
+          300: "#5EDBD4",
+          400: "#2CD0C7",
+          500: "#16B8B0",
+          600: "#0F948F",
+          700: "#107572",
+          800: "#0D2A5C",
+          900: "#071A3D",
+          950: "#05132D",
+        },
+      },
+      fontFamily: {
+        sans: ["ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+      },
+      boxShadow: {
+        soft: "0 1px 3px rgba(7, 26, 61, 0.05), 0 8px 24px -6px rgba(7, 26, 61, 0.08)",
+        glow: "0 0 20px -3px rgba(22, 184, 176, 0.25)",
+      },
+      borderRadius: {
+        xl2: "1.25rem",
+      },
+    },
+  },
+  plugins: [],
+};
