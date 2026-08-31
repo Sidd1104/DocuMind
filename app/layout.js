@@ -1,4 +1,5 @@
 import "./globals.css";
+import "@/lib/env-check";
 
 export const metadata = {
   title: "DocuMind — Your Documents. Organized. Understood.",

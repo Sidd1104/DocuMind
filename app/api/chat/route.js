@@ -75,5 +75,11 @@ export async function POST(req) {
     },
   });
 
-  return NextResponse.json({ answer: text, sources: uniqueSources, provider, error });
+  const isDev = process.env.NODE_ENV !== "production";
+  return NextResponse.json({
+    answer: text,
+    sources: uniqueSources,
+    provider,
+    ...(isDev && error ? { debug: error } : {}),
+  });
 }
