@@ -12,14 +12,26 @@ export async function GET(req, { params }) {
 
   const doc = await prisma.document.findUnique({
     where: { id: params.id },
-    include: { versions: { orderBy: { versionNumber: "desc" }, take: 1 } },
+    include: { versions: { orderBy: { versionNumber: "desc" } } },
   });
   // Ownership check happens here, on every file request — not just at upload time.
   if (!doc || doc.userId !== user.id || doc.versions.length === 0) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const version = doc.versions[0];
+  const { searchParams } = new URL(req.url);
+  const versionParam = searchParams.get("version");
+  let version = doc.versions[0];
+
+  if (versionParam) {
+    const targetVersion = parseInt(versionParam, 10);
+    const matched = doc.versions.find((v) => v.versionNumber === targetVersion);
+    if (!matched) {
+      return NextResponse.json({ error: "Version not found" }, { status: 404 });
+    }
+    version = matched;
+  }
+
   const filePath = path.join(UPLOAD_DIR, version.filePath);
   try {
     const buffer = await fs.readFile(filePath);

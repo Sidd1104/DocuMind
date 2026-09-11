@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { retrieveTopChunks } from "@/lib/rag";
 import { generateGroundedAnswer } from "@/lib/llm";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export async function GET() {
   const user = await requireUser().catch(() => null);
@@ -23,6 +24,18 @@ export async function GET() {
 export async function POST(req) {
   const user = await requireUser().catch(() => null);
   if (!user) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+
+  const { allowed, resetMs } = checkRateLimit("chat", user.id, 20, 10 * 60 * 1000);
+  if (!allowed) {
+    const waitMins = Math.ceil(resetMs / 60000);
+    return NextResponse.json(
+      { error: `Chat rate limit reached (max 20 messages per 10 minutes). Please wait ${waitMins} minute${waitMins === 1 ? "" : "s"}.` },
+      {
+        status: 429,
+        headers: { "Retry-After": Math.ceil(resetMs / 1000).toString() },
+      }
+    );
+  }
 
   const { message } = await req.json();
   if (!message || !message.trim()) {
