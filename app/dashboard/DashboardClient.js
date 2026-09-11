@@ -60,7 +60,7 @@ export default function DashboardClient({ userName, pinned, recent, upcomingExpi
 
       {upcomingExpiry.length > 0 && (
         <section className="mt-8">
-          <h2 className="text-sm font-semibold text-ink-700 mb-3">Upcoming expiry & renewals</h2>
+          <h2 className="text-sm font-semibold text-ink-700 mb-3">Upcoming expiry (next 90 days)</h2>
           <div className="grid sm:grid-cols-3 gap-4">
             {upcomingExpiry.map((d) => (
               <div key={d.id} className="bg-white border border-amber-200 bg-amber-50/40 rounded-xl2 p-4 shadow-sm">

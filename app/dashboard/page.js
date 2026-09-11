@@ -16,9 +16,15 @@ export default async function DashboardPage() {
   });
 
   const pinned = documents.filter((d) => d.pinned);
-  const recent = documents.slice(0, 5);
+  const now = new Date();
+  const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+
   const upcomingExpiry = documents
-    .filter((d) => d.expiryDate)
+    .filter((d) => {
+      if (!d.expiryDate) return false;
+      const expiry = new Date(d.expiryDate);
+      return expiry >= now && expiry <= ninetyDaysFromNow;
+    })
     .sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate))
     .slice(0, 3);
 
