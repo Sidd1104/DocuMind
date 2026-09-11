@@ -194,14 +194,34 @@ export default function DetailClient({ doc }) {
       </div>
       <div className="mt-3 bg-white border border-ink-100 rounded-xl2 shadow-soft divide-y divide-ink-100 overflow-hidden">
         {doc.versions.map((v, i) => (
-          <div key={v.id} className="flex items-center justify-between px-5 py-3.5 text-sm">
-            <div>
-              <span className="font-medium text-navy-950">Version {v.versionNumber}</span>
-              {i === 0 && <span className="ml-2 text-xs text-teal-800 bg-teal-50 border border-teal-200 rounded-full px-2 py-0.5 font-medium">Current</span>}
-              <span className="ml-2 text-ink-400">{v.originalName}</span>
+          <a
+            key={v.id}
+            href={`/api/documents/${doc.id}/file?version=${v.versionNumber}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-between px-5 py-3.5 text-sm hover:bg-teal-50/40 transition-colors group block"
+            title={`View Version ${v.versionNumber} PDF`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-navy-950 group-hover:text-teal-700 transition-colors">
+                Version {v.versionNumber}
+              </span>
+              {i === 0 && (
+                <span className="text-xs text-teal-800 bg-teal-50 border border-teal-200 rounded-full px-2 py-0.5 font-medium">
+                  Current
+                </span>
+              )}
+              <span className="text-ink-400 group-hover:text-ink-600 truncate max-w-xs">
+                {v.originalName}
+              </span>
             </div>
-            <span className="text-ink-400">{formatDate(v.uploadedAt)}</span>
-          </div>
+            <div className="flex items-center gap-3">
+              <span className="text-ink-400 text-xs">{formatDate(v.uploadedAt)}</span>
+              <span className="text-xs text-teal-700 opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+                View PDF ↗
+              </span>
+            </div>
+          </a>
         ))}
       </div>
 
