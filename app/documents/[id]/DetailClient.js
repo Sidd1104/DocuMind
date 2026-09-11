@@ -19,16 +19,31 @@ export default function DetailClient({ doc }) {
   const [updateOpen, setUpdateOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(false);
   const [category, setCategory] = useState(doc.category);
+  const [subcategory, setSubcategory] = useState(doc.subcategory || "");
+  const [customCategory, setCustomCategory] = useState(doc.customCategory || "");
   const [expiryDate, setExpiryDate] = useState(doc.expiryDate ? doc.expiryDate.slice(0, 10) : "");
+
+  const selectedCategory = CATEGORIES.find((c) => c.key === category);
 
   async function saveCategory() {
     await fetch(`/api/documents/${doc.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ category }),
+      body: JSON.stringify({
+        category,
+        subcategory: subcategory === "Other" ? "" : (subcategory || null),
+        customCategory: subcategory === "Other" ? (customCategory || null) : null,
+      }),
     });
     setEditingCategory(false);
     router.refresh();
+  }
+
+  function cancelCategory() {
+    setCategory(doc.category);
+    setSubcategory(doc.subcategory || "");
+    setCustomCategory(doc.customCategory || "");
+    setEditingCategory(false);
   }
 
   async function saveExpiry() {
@@ -91,24 +106,58 @@ export default function DetailClient({ doc }) {
       </div>
 
       <div className="mt-8 bg-white border border-ink-100 rounded-xl2 shadow-soft p-6 space-y-5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <span className="text-sm font-medium text-ink-700">Category</span>
           {editingCategory ? (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => {
+                  setCategory(e.target.value);
+                  setSubcategory("");
+                  setCustomCategory("");
+                }}
                 className="text-sm border border-ink-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-400"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c.key} value={c.key}>{c.label}</option>
                 ))}
               </select>
-              <button onClick={saveCategory} className="text-sm text-teal-700 font-semibold hover:underline">Save</button>
+
+              {selectedCategory && (
+                <select
+                  value={subcategory}
+                  onChange={(e) => setSubcategory(e.target.value)}
+                  className="text-sm border border-ink-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                >
+                  <option value="">Select subcategory…</option>
+                  {selectedCategory.subcategories.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              )}
+
+              {subcategory === "Other" && (
+                <input
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  className="text-sm border border-ink-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  placeholder="Custom name…"
+                />
+              )}
+
+              <div className="flex items-center gap-2">
+                <button onClick={saveCategory} className="text-sm text-teal-700 font-semibold hover:underline">
+                  Save
+                </button>
+                <button onClick={cancelCategory} className="text-sm text-ink-400 hover:text-ink-600">
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
-            <button onClick={() => setEditingCategory(true)} className="text-sm text-teal-700 font-medium hover:underline">
-              {categoryLabel(doc.category)} — edit
+            <button onClick={() => setEditingCategory(true)} className="text-sm text-teal-700 font-medium hover:underline text-left">
+              {categoryLabel(doc.category)}{doc.subcategory ? ` · ${doc.subcategory === "Other" ? doc.customCategory : doc.subcategory}` : ""} — edit
             </button>
           )}
         </div>

@@ -190,6 +190,15 @@ function MessageBubble({ message }) {
             ))}
           </div>
         )}
+        {!isUser && message.provider && (
+          <p className="mt-1.5 text-[11px] text-ink-400 px-1 select-none">
+            {message.provider === "claude"
+              ? "via Claude"
+              : message.provider === "gemini"
+              ? "via Gemini fallback"
+              : `via ${message.provider}`}
+          </p>
+        )}
       </div>
     </div>
   );
