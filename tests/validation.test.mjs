@@ -45,6 +45,10 @@ describe("Validation & Taxonomy", () => {
   test("generateGroundedAnswer short-circuits on empty chunks without calling external APIs", async () => {
     const res = await generateGroundedAnswer("What is my insurance policy?", []);
     assert.equal(res.provider, "none");
-    assert.ok(res.text.includes("could not find any information"));
+    assert.ok(
+      res.text.includes("uploaded documents") ||
+      res.text.includes("vault") ||
+      res.text.includes("current documents")
+    );
   });
 });

@@ -262,7 +262,7 @@ export default function DetailClient({ doc }) {
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-ink-700">Current file</span>
           <span className="text-sm text-ink-500">
-            {doc.versions[0]?.originalName} · {formatSize(doc.versions[0]?.fileSize)} · {doc.versions[0]?.pageCount} pages
+            {doc.versions[0]?.originalName} · {formatSize(doc.versions[0]?.fileSize)} · {doc.versions[0]?.pageCount} {doc.versions[0]?.pageCount === 1 ? "page" : "pages"}
           </span>
         </div>
       </div>
