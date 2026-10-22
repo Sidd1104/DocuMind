@@ -55,6 +55,8 @@ export default function ChatPanel({ documentTitles }) {
       ...prev,
       { role: "assistant", content: data.answer, sources: data.sources || [], provider: data.provider },
     ]);
+  }
+
   async function clearChat() {
     if (!messages.length) return;
     if (!confirm("Clear your conversation history with DocuMind AI?")) return;
