@@ -344,12 +344,12 @@ AUTH_SECRET="your-super-secret-random-jwt-key-min-32-chars"
 
 # Primary LLM Provider: Anthropic Claude
 ANTHROPIC_API_KEY="sk-ant-api03-..."
-ANTHROPIC_MODEL="claude-sonnet-5"
-# ANTHROPIC_WORKSPACE_ID=""  # Optional: For organization routing
+ANTHROPIC_MODEL="claude-3-5-sonnet-20241022"
+# ANTHROPIC_WORKSPACE_ID=""  # Required if key is organization-scoped
 
 # Fallback LLM & Multimodal OCR: Google Gemini
 GEMINI_API_KEY="AIzaSy..."
-GEMINI_MODEL="gemini-3.5-flash"
+GEMINI_MODEL="gemini-1.5-flash"
 ```
 
 > [!TIP]
@@ -361,7 +361,15 @@ GEMINI_MODEL="gemini-3.5-flash"
 npx prisma db push
 ```
 
-### 5. Launch the Development Server
+### 5. Run Automated Tests
+
+```bash
+npm test
+```
+
+Executes the automated unit and integration suite covering authentication, sliding-window rate limiting, BM25 retrieval scoring, and database contracts.
+
+### 6. Launch the Development Server
 
 ```bash
 npm run dev
@@ -378,10 +386,10 @@ Visit **[http://localhost:3000](http://localhost:3000)** in your browser. Regist
 | `DATABASE_URL` | **Yes** | `"file:./dev.db"` | SQLite connection string or PostgreSQL URL (`postgresql://user:pass@host:5432/db`) |
 | `AUTH_SECRET` | **Yes** | — | High-entropy random string used to sign and verify session JWT cookies |
 | `ANTHROPIC_API_KEY` | *Recommended* | — | Anthropic API secret key for Claude Sonnet reasoning |
-| `ANTHROPIC_MODEL` | No | `"claude-sonnet-5"` | Model identifier for Anthropic Claude calls |
-| `ANTHROPIC_WORKSPACE_ID` | No | — | Optional workspace identifier for Anthropic organization routing |
+| `ANTHROPIC_MODEL` | No | `"claude-3-5-sonnet-20241022"` | Model identifier for Anthropic Claude calls |
+| `ANTHROPIC_WORKSPACE_ID` | No | — | Workspace identifier for Anthropic organization routing |
 | `GEMINI_API_KEY` | *Recommended* | — | Google Generative AI API key for Gemini Flash and Vision OCR |
-| `GEMINI_MODEL` | No | `"gemini-3.5-flash"` | Model identifier for Google Gemini calls |
+| `GEMINI_MODEL` | No | `"gemini-1.5-flash"` | Model identifier for Google Gemini calls |
 
 ---
 

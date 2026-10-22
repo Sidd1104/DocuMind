@@ -12,7 +12,10 @@ export default async function DocumentsPage() {
   const documents = await prisma.document.findMany({
     where: { userId: user.id },
     orderBy: { updatedAt: "desc" },
-    include: { versions: { orderBy: { versionNumber: "desc" }, take: 1 } },
+    include: {
+      versions: { orderBy: { versionNumber: "desc" }, take: 1 },
+      _count: { select: { versions: true } },
+    },
   });
 
   const serialized = documents.map((d) => ({
@@ -28,7 +31,7 @@ export default async function DocumentsPage() {
     createdAt: d.createdAt,
     fileSize: d.versions[0]?.fileSize ?? 0,
     pageCount: d.versions[0]?.pageCount ?? 0,
-    versionCount: d.versions.length,
+    versionCount: d._count?.versions ?? d.versions.length,
   }));
 
   const safeUser = { id: user.id, name: user.name, email: user.email };

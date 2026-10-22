@@ -50,12 +50,12 @@ async function verifySessionToken(token, secret) {
   }
 }
 
-const PROTECTED_PREFIXES = ["/dashboard", "/documents", "/assistant"];
-const AUTH_PAGES = ["/login", "/signup"];
+const PROTECTED_PREFIXES = ["/dashboard", "/documents", "/assistant", "/settings"];
+const AUTH_PAGES = ["/login", "/signup", "/forgot-password", "/reset-password"];
 
 export async function middleware(req) {
   const { pathname } = req.nextUrl;
-  const token = req.cookies.get("la_session")?.value;
+  const token = req.cookies.get("documind_token")?.value || req.cookies.get("la_session")?.value;
   const secret = process.env.AUTH_SECRET;
 
   const payload = await verifySessionToken(token, secret);
@@ -72,7 +72,7 @@ export async function middleware(req) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Already authenticated users visiting /login or /signup -> redirect to /dashboard
+  // Already authenticated users visiting /login, /signup, etc. -> redirect to /dashboard
   if (isAuthPage && isAuthenticated) {
     const dashboardUrl = new URL("/dashboard", req.url);
     return NextResponse.redirect(dashboardUrl);
@@ -89,7 +89,11 @@ export const config = {
     "/documents/:path*",
     "/assistant",
     "/assistant/:path*",
+    "/settings",
+    "/settings/:path*",
     "/login",
     "/signup",
+    "/forgot-password",
+    "/reset-password",
   ],
 };

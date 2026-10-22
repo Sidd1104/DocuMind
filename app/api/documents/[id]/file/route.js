@@ -32,13 +32,21 @@ export async function GET(req, { params }) {
     version = matched;
   }
 
-  const filePath = path.join(UPLOAD_DIR, version.filePath);
+  const safeUploadDir = path.resolve(UPLOAD_DIR);
+  const filePath = path.resolve(path.join(safeUploadDir, version.filePath));
+  if (!filePath.startsWith(safeUploadDir)) {
+    return NextResponse.json({ error: "Access denied" }, { status: 403 });
+  }
+
   try {
     const buffer = await fs.readFile(filePath);
+    const sanitizedName = version.originalName.replace(/["\r\n]/g, "_");
     return new NextResponse(buffer, {
       headers: {
         "content-type": "application/pdf",
-        "content-disposition": `inline; filename="${version.originalName}"`,
+        "content-disposition": `inline; filename="${sanitizedName}"`,
+        "x-content-type-options": "nosniff",
+        "cache-control": "private, no-cache, no-store, must-revalidate",
       },
     });
   } catch {

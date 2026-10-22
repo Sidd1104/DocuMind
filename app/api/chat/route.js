@@ -21,6 +21,16 @@ export async function GET() {
   });
 }
 
+export async function DELETE() {
+  const user = await requireUser().catch(() => null);
+  if (!user) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+
+  await prisma.chatMessage.deleteMany({
+    where: { userId: user.id },
+  });
+  return NextResponse.json({ ok: true });
+}
+
 export async function POST(req) {
   const user = await requireUser().catch(() => null);
   if (!user) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });

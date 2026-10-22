@@ -22,9 +22,15 @@ export default function LibraryClient({ documents }) {
   const [uploadOpen, setUploadOpen] = useState(false);
 
   const filtered = useMemo(() => {
-    let list = documents.filter((d) =>
-      d.title.toLowerCase().includes(query.toLowerCase())
-    );
+    const q = query.trim().toLowerCase();
+    let list = documents.filter((d) => {
+      if (!q) return true;
+      const titleMatch = d.title.toLowerCase().includes(q);
+      const catMatch = d.categoryLabel?.toLowerCase().includes(q);
+      const subMatch = d.subcategory?.toLowerCase().includes(q);
+      const customMatch = d.customCategory?.toLowerCase().includes(q);
+      return titleMatch || catMatch || subMatch || customMatch;
+    });
     if (categoryFilter !== "all") {
       list = list.filter((d) => d.category === categoryFilter);
     }

@@ -17,6 +17,8 @@ function formatSize(bytes) {
 export default function DetailClient({ doc }) {
   const router = useRouter();
   const [updateOpen, setUpdateOpen] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [title, setTitle] = useState(doc.title);
   const [editingCategory, setEditingCategory] = useState(false);
   const [category, setCategory] = useState(doc.category);
   const [subcategory, setSubcategory] = useState(doc.subcategory || "");
@@ -24,6 +26,23 @@ export default function DetailClient({ doc }) {
   const [expiryDate, setExpiryDate] = useState(doc.expiryDate ? doc.expiryDate.slice(0, 10) : "");
 
   const selectedCategory = CATEGORIES.find((c) => c.key === category);
+
+  async function saveTitle(e) {
+    if (e) e.preventDefault();
+    if (!title.trim()) return;
+    await fetch(`/api/documents/${doc.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: title.trim() }),
+    });
+    setEditingTitle(false);
+    router.refresh();
+  }
+
+  function cancelTitle() {
+    setTitle(doc.title);
+    setEditingTitle(false);
+  }
 
   async function saveCategory() {
     await fetch(`/api/documents/${doc.id}`, {
@@ -77,8 +96,35 @@ export default function DetailClient({ doc }) {
       </Link>
 
       <div className="mt-3 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-navy-950">{doc.title}</h1>
+        <div className="flex-1 mr-4">
+          {editingTitle ? (
+            <form onSubmit={saveTitle} className="flex items-center gap-2">
+              <input
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="text-xl font-semibold text-navy-950 border border-ink-200 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-teal-400 w-full max-w-md"
+                maxLength={150}
+              />
+              <button type="submit" className="text-xs bg-navy-900 text-white rounded-lg px-3 py-1.5 font-medium hover:bg-navy-800">
+                Save
+              </button>
+              <button type="button" onClick={cancelTitle} className="text-xs border border-ink-200 rounded-lg px-2 py-1.5 text-ink-600 hover:bg-ink-50">
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <div className="flex items-center gap-2 group">
+              <h1 className="text-2xl font-semibold text-navy-950">{title}</h1>
+              <button
+                onClick={() => setEditingTitle(true)}
+                className="text-xs text-ink-400 hover:text-teal-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Rename document"
+              >
+                ✎ Rename
+              </button>
+            </div>
+          )}
           <p className="text-ink-500 text-sm mt-1">
             {categoryLabel(doc.category)}{doc.subcategory ? ` · ${doc.subcategory === "Other" ? doc.customCategory : doc.subcategory}` : ""}
           </p>

@@ -35,6 +35,9 @@ export async function PATCH(req, { params }) {
 
   const body = await req.json();
   const data = {};
+  if (typeof body.title === "string" && body.title.trim()) {
+    data.title = body.title.trim().slice(0, 150);
+  }
   if (typeof body.pinned === "boolean") data.pinned = body.pinned;
   if (typeof body.category === "string") data.category = body.category;
   if (typeof body.subcategory === "string" || body.subcategory === null) data.subcategory = body.subcategory;

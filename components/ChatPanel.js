@@ -55,6 +55,11 @@ export default function ChatPanel({ documentTitles }) {
       ...prev,
       { role: "assistant", content: data.answer, sources: data.sources || [], provider: data.provider },
     ]);
+  async function clearChat() {
+    if (!messages.length) return;
+    if (!confirm("Clear your conversation history with DocuMind AI?")) return;
+    await fetch("/api/chat", { method: "DELETE" });
+    setMessages([]);
   }
 
   return (
@@ -70,9 +75,20 @@ export default function ChatPanel({ documentTitles }) {
               Grounded exclusively in your uploaded documents with cited sources.
             </p>
           </div>
-          <span className="text-xs font-medium text-teal-700 bg-teal-50 border border-teal-100 rounded-full px-3 py-1">
-            Private & Isolated
-          </span>
+          <div className="flex items-center gap-2">
+            {messages.length > 0 && (
+              <button
+                onClick={clearChat}
+                className="text-xs text-ink-500 hover:text-red-600 transition-colors px-2.5 py-1 rounded-md hover:bg-ink-100 cursor-pointer"
+                title="Clear conversation history"
+              >
+                Clear chat
+              </button>
+            )}
+            <span className="text-xs font-medium text-teal-700 bg-teal-50 border border-teal-100 rounded-full px-3 py-1">
+              Private & Isolated
+            </span>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto py-6 space-y-5">
@@ -162,11 +178,138 @@ export default function ChatPanel({ documentTitles }) {
   );
 }
 
+function formatInline(text) {
+  if (typeof text !== "string") return text;
+  const parts = [];
+  const regex = /(\*\*.*?\*\*|`.*?`)/g;
+  let lastIdx = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIdx) {
+      parts.push(text.slice(lastIdx, match.index));
+    }
+    const token = match[0];
+    if (token.startsWith("**") && token.endsWith("**")) {
+      parts.push(
+        <strong key={match.index} className="font-semibold text-navy-950">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    } else if (token.startsWith("`") && token.endsWith("`")) {
+      parts.push(
+        <code key={match.index} className="bg-ink-100 text-teal-800 text-xs px-1.5 py-0.5 rounded font-mono">
+          {token.slice(1, -1)}
+        </code>
+      );
+    }
+    lastIdx = regex.lastIndex;
+  }
+  if (lastIdx < text.length) {
+    parts.push(text.slice(lastIdx));
+  }
+  return parts.length > 0 ? parts : text;
+}
+
+function MarkdownRenderer({ content }) {
+  if (!content) return null;
+  const lines = content.split("\n");
+  const elements = [];
+  let currentList = null;
+
+  lines.forEach((rawLine, idx) => {
+    const line = rawLine.trim();
+
+    if (!line) {
+      if (currentList) {
+        elements.push(currentList);
+        currentList = null;
+      }
+      return;
+    }
+
+    if (line.startsWith("- ") || line.startsWith("* ")) {
+      const itemText = line.slice(2);
+      if (!currentList || currentList.type !== "ul") {
+        if (currentList) elements.push(currentList);
+        currentList = { type: "ul", items: [] };
+      }
+      currentList.items.push(
+        <li key={`li-${idx}`} className="ml-4 list-disc pl-1 text-sm">
+          {formatInline(itemText)}
+        </li>
+      );
+      return;
+    }
+
+    const numMatch = line.match(/^(\d+)\.\s+(.*)/);
+    if (numMatch) {
+      const itemText = numMatch[2];
+      if (!currentList || currentList.type !== "ol") {
+        if (currentList) elements.push(currentList);
+        currentList = { type: "ol", items: [] };
+      }
+      currentList.items.push(
+        <li key={`li-${idx}`} className="ml-4 list-decimal pl-1 text-sm">
+          {formatInline(itemText)}
+        </li>
+      );
+      return;
+    }
+
+    if (currentList) {
+      elements.push(currentList);
+      currentList = null;
+    }
+
+    if (line.startsWith("### ")) {
+      elements.push(
+        <h4 key={`h4-${idx}`} className="font-semibold text-navy-950 text-sm mt-2 mb-1">
+          {formatInline(line.slice(4))}
+        </h4>
+      );
+      return;
+    }
+    if (line.startsWith("## ")) {
+      elements.push(
+        <h3 key={`h3-${idx}`} className="font-semibold text-navy-950 text-base mt-3 mb-1">
+          {formatInline(line.slice(3))}
+        </h3>
+      );
+      return;
+    }
+
+    elements.push(
+      <p key={`p-${idx}`} className="mb-2 last:mb-0 leading-relaxed text-sm">
+        {formatInline(line)}
+      </p>
+    );
+  });
+
+  if (currentList) {
+    elements.push(currentList);
+  }
+
+  return (
+    <div className="space-y-1">
+      {elements.map((el, i) => {
+        if (el?.type === "ul") {
+          return <ul key={`list-${i}`} className="my-1.5 space-y-1">{el.items}</ul>;
+        }
+        if (el?.type === "ol") {
+          return <ol key={`list-${i}`} className="my-1.5 space-y-1">{el.items}</ol>;
+        }
+        return el;
+      })}
+    </div>
+  );
+}
+
 function MessageBubble({ message }) {
   const isUser = message.role === "user";
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[85%] ${isUser ? "" : ""}`}>
+      <div className="max-w-[85%]">
         <div
           className={`rounded-xl2 px-4 py-3 text-sm leading-relaxed ${
             isUser
@@ -174,19 +317,25 @@ function MessageBubble({ message }) {
               : "bg-white border border-ink-100 text-navy-950 shadow-soft"
           }`}
         >
-          {message.content}
+          {isUser ? message.content : <MarkdownRenderer content={message.content} />}
         </div>
         {!isUser && message.sources && message.sources.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
             {message.sources.map((s, idx) => (
-              <span
+              <a
                 key={idx}
-                className="text-xs text-ink-600 bg-white border border-teal-200/80 rounded-full px-3 py-1 shadow-xs flex items-center gap-1.5"
+                href={`/api/documents/${s.documentId}/file#page=${s.pageNumber}`}
+                target="_blank"
+                rel="noreferrer"
+                title={`Open ${s.documentTitle} at page ${s.pageNumber}`}
+                className="text-xs text-ink-600 bg-white hover:bg-teal-50 border border-teal-200/80 hover:border-teal-400 rounded-full px-3 py-1 shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer group"
               >
                 <span className="text-teal-600">📄</span>
-                <span className="font-medium text-navy-900">{s.documentTitle}</span>
-                <span className="text-ink-400">· p.{s.pageNumber}</span>
-              </span>
+                <span className="font-medium text-navy-900 group-hover:text-teal-900 truncate max-w-[200px]">
+                  {s.documentTitle}
+                </span>
+                <span className="text-ink-400 group-hover:text-teal-700">· p.{s.pageNumber} ↗</span>
+              </a>
             ))}
           </div>
         )}
@@ -196,6 +345,8 @@ function MessageBubble({ message }) {
               ? "via Claude"
               : message.provider === "gemini"
               ? "via Gemini fallback"
+              : message.provider === "grounded-guardrail"
+              ? "grounded guardrail"
               : `via ${message.provider}`}
           </p>
         )}

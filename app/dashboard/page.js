@@ -28,6 +28,8 @@ export default async function DashboardPage() {
     .sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate))
     .slice(0, 3);
 
+  const recent = documents.slice(0, 6);
+
   const safeUser = { id: user.id, name: user.name, email: user.email };
 
   const serialize = (d) => ({

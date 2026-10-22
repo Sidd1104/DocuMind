@@ -25,11 +25,16 @@ export async function POST(req, { params }) {
   if (!file || typeof file === "string" || file.type !== "application/pdf") {
     return NextResponse.json({ error: "A PDF file is required." }, { status: 400 });
   }
+  const MAX_SIZE = 15 * 1024 * 1024; // 15MB
+  if (file.size > MAX_SIZE) {
+    return NextResponse.json({ error: "File is too large (max 15MB)." }, { status: 400 });
+  }
 
   await fs.mkdir(UPLOAD_DIR, { recursive: true });
   const buffer = Buffer.from(await file.arrayBuffer());
   const storedName = `${uuid()}.pdf`;
-  await fs.writeFile(path.join(UPLOAD_DIR, storedName), buffer);
+  const filePath = path.join(UPLOAD_DIR, storedName);
+  await fs.writeFile(filePath, buffer);
 
   let pages = [];
   try {
@@ -38,42 +43,48 @@ export async function POST(req, { params }) {
     pages = [];
   }
 
-  const nextVersionNumber = Math.max(...doc.versions.map((v) => v.versionNumber), 0) + 1;
-  const version = await prisma.documentVersion.create({
-    data: {
-      documentId: doc.id,
-      versionNumber: nextVersionNumber,
-      filePath: storedName,
-      originalName: file.name,
-      fileSize: file.size,
-      pageCount: pages.length,
-    },
-  });
-
-  await prisma.document.update({
-    where: { id: doc.id },
-    data: { currentVersionId: version.id, updatedAt: new Date() },
-  });
-
-  // Old chunks stay in the DB tagged with their own documentVersionId (history is
-  // preserved), but retrieval for the assistant only ever looks at the CURRENT
-  // version's chunks — see /api/chat.
-  const chunkRows = [];
-  pages.forEach((pageText, pageIdx) => {
-    chunkPageText(pageText).forEach((text, chunkIdx) => {
-      chunkRows.push({
-        userId: user.id,
+  try {
+    const nextVersionNumber = Math.max(...doc.versions.map((v) => v.versionNumber), 0) + 1;
+    const version = await prisma.documentVersion.create({
+      data: {
         documentId: doc.id,
-        documentVersionId: version.id,
-        pageNumber: pageIdx + 1,
-        chunkIndex: chunkIdx,
-        text,
+        versionNumber: nextVersionNumber,
+        filePath: storedName,
+        originalName: file.name,
+        fileSize: file.size,
+        pageCount: pages.length,
+      },
+    });
+
+    await prisma.document.update({
+      where: { id: doc.id },
+      data: { currentVersionId: version.id, updatedAt: new Date() },
+    });
+
+    // Old chunks stay in the DB tagged with their own documentVersionId (history is
+    // preserved), but retrieval for the assistant only ever looks at the CURRENT
+    // version's chunks — see /api/chat.
+    const chunkRows = [];
+    pages.forEach((pageText, pageIdx) => {
+      chunkPageText(pageText).forEach((text, chunkIdx) => {
+        chunkRows.push({
+          userId: user.id,
+          documentId: doc.id,
+          documentVersionId: version.id,
+          pageNumber: pageIdx + 1,
+          chunkIndex: chunkIdx,
+          text,
+        });
       });
     });
-  });
-  if (chunkRows.length > 0) {
-    await prisma.chunk.createMany({ data: chunkRows });
-  }
+    if (chunkRows.length > 0) {
+      await prisma.chunk.createMany({ data: chunkRows });
+    }
 
-  return NextResponse.json({ ok: true, versionNumber: nextVersionNumber });
+    return NextResponse.json({ ok: true, versionNumber: nextVersionNumber });
+  } catch (dbErr) {
+    console.error("[Version Ingestion Error]", dbErr.message);
+    await fs.unlink(filePath).catch(() => {});
+    return NextResponse.json({ error: "Failed to persist updated version." }, { status: 500 });
+  }
 }

@@ -32,6 +32,15 @@ export async function POST(req) {
   const category = form.get("category");
   const subcategory = form.get("subcategory") || null;
   const customCategory = form.get("customCategory") || null;
+  const expiryRaw = form.get("expiryDate");
+  let expiryDate = null;
+  if (expiryRaw && typeof expiryRaw === "string" && expiryRaw.trim()) {
+    const parsed = new Date(expiryRaw.trim());
+    if (isNaN(parsed.getTime())) {
+      return NextResponse.json({ error: "Invalid expiry date format." }, { status: 400 });
+    }
+    expiryDate = parsed;
+  }
 
   if (!file || typeof file === "string") {
     return NextResponse.json({ error: "A PDF file is required." }, { status: 400 });
@@ -62,49 +71,56 @@ export async function POST(req) {
     pages = [];
   }
 
-  const document = await prisma.document.create({
-    data: {
-      userId: user.id,
-      title,
-      category,
-      subcategory,
-      customCategory,
-    },
-  });
-
-  const version = await prisma.documentVersion.create({
-    data: {
-      documentId: document.id,
-      versionNumber: 1,
-      filePath: storedName,
-      originalName: file.name,
-      fileSize: file.size,
-      pageCount: pages.length,
-    },
-  });
-
-  await prisma.document.update({
-    where: { id: document.id },
-    data: { currentVersionId: version.id },
-  });
-
-  const chunkRows = [];
-  pages.forEach((pageText, pageIdx) => {
-    const chunks = chunkPageText(pageText);
-    chunks.forEach((text, chunkIdx) => {
-      chunkRows.push({
+  try {
+    const document = await prisma.document.create({
+      data: {
         userId: user.id,
+        title,
+        category,
+        subcategory,
+        customCategory,
+        expiryDate,
+      },
+    });
+
+    const version = await prisma.documentVersion.create({
+      data: {
         documentId: document.id,
-        documentVersionId: version.id,
-        pageNumber: pageIdx + 1,
-        chunkIndex: chunkIdx,
-        text,
+        versionNumber: 1,
+        filePath: storedName,
+        originalName: file.name,
+        fileSize: file.size,
+        pageCount: pages.length,
+      },
+    });
+
+    await prisma.document.update({
+      where: { id: document.id },
+      data: { currentVersionId: version.id },
+    });
+
+    const chunkRows = [];
+    pages.forEach((pageText, pageIdx) => {
+      const chunks = chunkPageText(pageText);
+      chunks.forEach((text, chunkIdx) => {
+        chunkRows.push({
+          userId: user.id,
+          documentId: document.id,
+          documentVersionId: version.id,
+          pageNumber: pageIdx + 1,
+          chunkIndex: chunkIdx,
+          text,
+        });
       });
     });
-  });
-  if (chunkRows.length > 0) {
-    await prisma.chunk.createMany({ data: chunkRows });
-  }
+    if (chunkRows.length > 0) {
+      await prisma.chunk.createMany({ data: chunkRows });
+    }
 
-  return NextResponse.json({ ok: true, documentId: document.id, chunksIndexed: chunkRows.length });
+    return NextResponse.json({ ok: true, documentId: document.id, chunksIndexed: chunkRows.length });
+  } catch (dbErr) {
+    console.error("[Document Ingestion Error]", dbErr.message);
+    await fs.unlink(filePath).catch(() => {});
+    return NextResponse.json({ error: "Failed to persist document and passages." }, { status: 500 });
+  }
 }
