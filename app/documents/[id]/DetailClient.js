@@ -83,6 +83,28 @@ export default function DetailClient({ doc }) {
     router.refresh();
   }
 
+  const [reindexing, setReindexing] = useState(false);
+  const [reindexMsg, setReindexMsg] = useState("");
+
+  async function reindexDoc() {
+    setReindexing(true);
+    setReindexMsg("");
+    try {
+      const res = await fetch(`/api/documents/${doc.id}/reindex`, { method: "POST" });
+      const data = await res.json();
+      setReindexing(false);
+      if (res.ok) {
+        setReindexMsg(data.message || "Document successfully re-indexed.");
+        router.refresh();
+      } else {
+        setReindexMsg(data.error || "Re-indexing failed.");
+      }
+    } catch {
+      setReindexing(false);
+      setReindexMsg("Network error during re-indexing.");
+    }
+  }
+
   async function deleteDoc() {
     if (!confirm("Delete this document and all its versions from your DocuMind vault? This cannot be undone.")) return;
     await fetch(`/api/documents/${doc.id}`, { method: "DELETE" });
@@ -131,6 +153,15 @@ export default function DetailClient({ doc }) {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={reindexDoc}
+            disabled={reindexing}
+            className="text-sm border border-ink-200 bg-white text-ink-700 hover:text-navy-950 rounded-lg px-3.5 py-2 hover:bg-ink-50 transition-colors shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+            title="Re-extract text and re-index passages"
+          >
+            <span className={reindexing ? "animate-spin" : ""}>🔄</span>
+            {reindexing ? "Re-indexing…" : "Re-index"}
+          </button>
+          <button
             onClick={togglePin}
             className={`text-sm border rounded-lg px-3.5 py-2 transition-colors ${
               doc.pinned
@@ -150,6 +181,13 @@ export default function DetailClient({ doc }) {
           </a>
         </div>
       </div>
+
+      {reindexMsg && (
+        <div className="mt-4 p-3 bg-teal-50 border border-teal-200 rounded-lg text-xs font-medium text-teal-900 flex items-center justify-between">
+          <span>{reindexMsg}</span>
+          <button onClick={() => setReindexMsg("")} className="text-teal-700 hover:text-teal-950 font-bold ml-2">✕</button>
+        </div>
+      )}
 
       <div className="mt-8 bg-white border border-ink-100 rounded-xl2 shadow-soft p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

@@ -62,13 +62,38 @@ export async function POST(req) {
   const filePath = path.join(UPLOAD_DIR, storedName);
   await fs.writeFile(filePath, buffer);
 
-  let pages = [];
-  try {
-    pages = await extractPages(buffer);
-  } catch (e) {
-    // Extraction failure shouldn't block the upload — the document is still
-    // stored, it just won't be answerable by the assistant yet.
-    pages = [];
+  const totalChars = pages.reduce((acc, p) => acc + (p?.length || 0), 0);
+  console.log(`[Upload Pipeline] Stage 1 (Text Extraction): Extracted ${totalChars} total characters across ${pages.length} pages.`);
+
+  const chunkRows = [];
+  pages.forEach((pageText, pageIdx) => {
+    const chunks = chunkPageText(pageText);
+    chunks.forEach((text, chunkIdx) => {
+      chunkRows.push({
+        userId: user.id,
+        documentId: null, // assigned after document creation
+        documentVersionId: null,
+        pageNumber: pageIdx + 1,
+        chunkIndex: chunkIdx,
+        text,
+      });
+    });
+  });
+
+  console.log(`[Upload Pipeline] Stage 2 (Chunking): Generated ${chunkRows.length} chunks from document "${title}".`);
+
+  // Guardrail: Never report success with 0 passages.
+  if (chunkRows.length === 0) {
+    console.error(`[Upload Pipeline] Ingestion failed for "${title}": 0 passages extracted after OCR fallback.`);
+    await fs.unlink(filePath).catch(() => {});
+    return NextResponse.json(
+      {
+        error: "No readable passages could be extracted from this PDF (0 passages indexed). Please verify the document is not password-protected, blank, or unscannable.",
+        chunksIndexed: 0,
+        pageCount: pages.length,
+      },
+      { status: 422 }
+    );
   }
 
   try {
@@ -99,27 +124,28 @@ export async function POST(req) {
       data: { currentVersionId: version.id },
     });
 
-    const chunkRows = [];
-    pages.forEach((pageText, pageIdx) => {
-      const chunks = chunkPageText(pageText);
-      chunks.forEach((text, chunkIdx) => {
-        chunkRows.push({
-          userId: user.id,
-          documentId: document.id,
-          documentVersionId: version.id,
-          pageNumber: pageIdx + 1,
-          chunkIndex: chunkIdx,
-          text,
-        });
-      });
+    // Assign document and version IDs to chunk rows
+    chunkRows.forEach((row) => {
+      row.documentId = document.id;
+      row.documentVersionId = version.id;
     });
-    if (chunkRows.length > 0) {
-      await prisma.chunk.createMany({ data: chunkRows });
-    }
 
-    return NextResponse.json({ ok: true, documentId: document.id, chunksIndexed: chunkRows.length });
+    await prisma.chunk.createMany({ data: chunkRows });
+
+    console.log(`[Upload Pipeline] Stage 3 (Indexing Success): Persisted ${chunkRows.length} passages scoped to userId ${user.id}.`);
+
+    const pageLabel = `${pages.length} page${pages.length === 1 ? "" : "s"}`;
+    const passageLabel = `${chunkRows.length} passage${chunkRows.length === 1 ? "" : "s"}`;
+
+    return NextResponse.json({
+      ok: true,
+      documentId: document.id,
+      pageCount: pages.length,
+      chunksIndexed: chunkRows.length,
+      message: `${pageLabel}, ${passageLabel} indexed`,
+    });
   } catch (dbErr) {
-    console.error("[Document Ingestion Error]", dbErr.message);
+    console.error("[Upload Pipeline] Database Error:", dbErr.message);
     await fs.unlink(filePath).catch(() => {});
     return NextResponse.json({ error: "Failed to persist document and passages." }, { status: 500 });
   }

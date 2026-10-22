@@ -77,12 +77,14 @@ export async function POST(req) {
   }));
 
   const topChunks = retrieveTopChunks(message, enrichedChunks, 5);
-  const { text, provider, error } = await generateGroundedAnswer(message, topChunks);
+  const { text, provider, error } = await generateGroundedAnswer(message, topChunks, { userName: user.name });
 
   const sources = topChunks.map((c) => ({
     documentId: c.documentId,
     documentTitle: c.documentTitle,
+    docTitle: c.documentTitle,
     pageNumber: c.pageNumber,
+    page: c.pageNumber,
   }));
   // De-duplicate sources by document+page for a cleaner citation list.
   const uniqueSources = Array.from(

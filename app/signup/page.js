@@ -9,11 +9,13 @@ export default function SignupPage() {
   const router = useRouter();
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
+  const [isExistingEmail, setIsExistingEmail] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
+    setIsExistingEmail(false);
     setLoading(true);
     const res = await fetch("/api/auth/signup", {
       method: "POST",
@@ -23,6 +25,8 @@ export default function SignupPage() {
     const data = await res.json();
     setLoading(false);
     if (!res.ok) {
+      const isExisting = res.status === 409 || data.error?.toLowerCase().includes("already exists");
+      setIsExistingEmail(Boolean(isExisting));
       setError(data.error || "Something went wrong.");
       return;
     }
@@ -77,7 +81,18 @@ export default function SignupPage() {
             placeholder="At least 8 characters"
           />
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <div className="text-sm text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200 space-y-1">
+            <p>{error}</p>
+            {isExistingEmail && (
+              <p>
+                <Link href="/login" className="font-semibold text-teal-800 hover:text-teal-950 underline text-xs">
+                  Log in instead →
+                </Link>
+              </p>
+            )}
+          </div>
+        )}
         <button
           disabled={loading}
           className="w-full rounded-lg bg-navy-900 hover:bg-navy-800 disabled:opacity-60 text-white text-sm font-medium py-2.5 transition-colors shadow-soft"

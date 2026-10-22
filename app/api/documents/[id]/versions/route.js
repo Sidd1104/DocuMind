@@ -39,8 +39,41 @@ export async function POST(req, { params }) {
   let pages = [];
   try {
     pages = await extractPages(buffer);
-  } catch {
+  } catch (err) {
+    console.error("[Version Pipeline] Text extraction error:", err.message);
     pages = [];
+  }
+
+  const totalChars = pages.reduce((acc, p) => acc + (p?.length || 0), 0);
+  console.log(`[Version Pipeline] Stage 1 (Text Extraction): Extracted ${totalChars} characters across ${pages.length} pages.`);
+
+  const chunkRows = [];
+  pages.forEach((pageText, pageIdx) => {
+    chunkPageText(pageText).forEach((text, chunkIdx) => {
+      chunkRows.push({
+        userId: user.id,
+        documentId: doc.id,
+        documentVersionId: null, // assigned after version creation
+        pageNumber: pageIdx + 1,
+        chunkIndex: chunkIdx,
+        text,
+      });
+    });
+  });
+
+  console.log(`[Version Pipeline] Stage 2 (Chunking): Generated ${chunkRows.length} chunks.`);
+
+  if (chunkRows.length === 0) {
+    console.error(`[Version Pipeline] Ingestion failed for version: 0 passages extracted after OCR fallback.`);
+    await fs.unlink(filePath).catch(() => {});
+    return NextResponse.json(
+      {
+        error: "No readable passages could be extracted from this PDF (0 passages indexed). Please verify the document is not password-protected, blank, or unscannable.",
+        chunksIndexed: 0,
+        pageCount: pages.length,
+      },
+      { status: 422 }
+    );
   }
 
   try {
@@ -61,27 +94,24 @@ export async function POST(req, { params }) {
       data: { currentVersionId: version.id, updatedAt: new Date() },
     });
 
-    // Old chunks stay in the DB tagged with their own documentVersionId (history is
-    // preserved), but retrieval for the assistant only ever looks at the CURRENT
-    // version's chunks — see /api/chat.
-    const chunkRows = [];
-    pages.forEach((pageText, pageIdx) => {
-      chunkPageText(pageText).forEach((text, chunkIdx) => {
-        chunkRows.push({
-          userId: user.id,
-          documentId: doc.id,
-          documentVersionId: version.id,
-          pageNumber: pageIdx + 1,
-          chunkIndex: chunkIdx,
-          text,
-        });
-      });
+    chunkRows.forEach((row) => {
+      row.documentVersionId = version.id;
     });
-    if (chunkRows.length > 0) {
-      await prisma.chunk.createMany({ data: chunkRows });
-    }
 
-    return NextResponse.json({ ok: true, versionNumber: nextVersionNumber });
+    await prisma.chunk.createMany({ data: chunkRows });
+
+    console.log(`[Version Pipeline] Stage 3 (Indexing Success): Persisted ${chunkRows.length} passages for version ${nextVersionNumber}.`);
+
+    const pageLabel = `${pages.length} page${pages.length === 1 ? "" : "s"}`;
+    const passageLabel = `${chunkRows.length} passage${chunkRows.length === 1 ? "" : "s"}`;
+
+    return NextResponse.json({
+      ok: true,
+      versionNumber: nextVersionNumber,
+      pageCount: pages.length,
+      chunksIndexed: chunkRows.length,
+      message: `Version ${nextVersionNumber}: ${pageLabel}, ${passageLabel} indexed`,
+    });
   } catch (dbErr) {
     console.error("[Version Ingestion Error]", dbErr.message);
     await fs.unlink(filePath).catch(() => {});

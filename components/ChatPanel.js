@@ -121,12 +121,16 @@ export default function ChatPanel({ documentTitles }) {
             messages.map((m, i) => <MessageBubble key={i} message={m} />)
           )}
           {loading && (
-            <div className="flex items-center gap-2 text-ink-400 text-sm py-2">
-              <DocuMindSymbol className="w-4 h-4 animate-pulse" id="chat-loading-symbol" />
-              <span className="text-xs text-ink-400">DocuMind is reading your documents…</span>
-              <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
-              <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
-              <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-bounce" />
+            <div className="flex justify-start">
+              <div className="bg-white border border-ink-100 rounded-xl2 px-4 py-3 text-sm shadow-soft flex items-center gap-2.5">
+                <DocuMindSymbol className="w-4 h-4 animate-spin text-teal-600" id="chat-loading-symbol" style={{ animationDuration: "3s" }} />
+                <span className="text-xs text-ink-600 font-medium">DocuMind is thinking…</span>
+                <span className="flex gap-1 items-center">
+                  <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                </span>
+              </div>
             </div>
           )}
           <div ref={bottomRef} />
@@ -322,23 +326,27 @@ function MessageBubble({ message }) {
           {isUser ? message.content : <MarkdownRenderer content={message.content} />}
         </div>
         {!isUser && message.sources && message.sources.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {message.sources.map((s, idx) => (
-              <a
-                key={idx}
-                href={`/api/documents/${s.documentId}/file#page=${s.pageNumber}`}
-                target="_blank"
-                rel="noreferrer"
-                title={`Open ${s.documentTitle} at page ${s.pageNumber}`}
-                className="text-xs text-ink-600 bg-white hover:bg-teal-50 border border-teal-200/80 hover:border-teal-400 rounded-full px-3 py-1 shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer group"
-              >
-                <span className="text-teal-600">📄</span>
-                <span className="font-medium text-navy-900 group-hover:text-teal-900 truncate max-w-[200px]">
-                  {s.documentTitle}
-                </span>
-                <span className="text-ink-400 group-hover:text-teal-700">· p.{s.pageNumber} ↗</span>
-              </a>
-            ))}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {message.sources.map((s, idx) => {
+              const docTitle = s.docTitle || s.documentTitle || "Document";
+              const pageNum = s.page || s.pageNumber || 1;
+              return (
+                <a
+                  key={idx}
+                  href={`/api/documents/${s.documentId}/file#page=${pageNum}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={`Open ${docTitle} at page ${pageNum}`}
+                  className="text-xs text-ink-700 bg-white hover:bg-teal-50 border border-teal-200 hover:border-teal-400 rounded-full px-3 py-1 shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer group"
+                >
+                  <span className="text-teal-600">📄</span>
+                  <span className="font-medium text-navy-900 group-hover:text-teal-900 truncate max-w-[200px]">
+                    {docTitle}
+                  </span>
+                  <span className="text-ink-400 group-hover:text-teal-700 font-medium">· p.{pageNum} ↗</span>
+                </a>
+              );
+            })}
           </div>
         )}
         {!isUser && message.provider && (
