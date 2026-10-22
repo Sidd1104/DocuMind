@@ -1,12 +1,13 @@
 "use client";
 
-export function DocuMindSymbol({ className = "w-8 h-8", id = "dm-logo" }) {
+export function DocuMindSymbol({ className = "w-8 h-8", id = "dm-logo", style = {} }) {
   return (
     <svg
       viewBox="0 0 100 118"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
+      style={{ display: "inline-block", flexShrink: 0, ...style }}
       aria-label="DocuMind Symbol"
     >
       <defs>
@@ -105,21 +106,31 @@ export default function DocuMindLogo({
   id = "dm-logo",
 }) {
   const sizeMap = {
-    sm: { symbol: "w-6 h-6", text: "text-base", sub: "text-[9px]" },
-    md: { symbol: "w-8 h-8", text: "text-xl", sub: "text-[11px]" },
-    lg: { symbol: "w-10 h-10", text: "text-2xl", sub: "text-xs" },
-    xl: { symbol: "w-14 h-14", text: "text-4xl", sub: "text-sm" },
+    sm: { symbol: "w-6 h-6", text: "text-base", sub: "text-[9px]", px: 24 },
+    md: { symbol: "w-8 h-8", text: "text-xl", sub: "text-[11px]", px: 32 },
+    lg: { symbol: "w-10 h-10", text: "text-2xl", sub: "text-xs", px: 40 },
+    xl: { symbol: "w-14 h-14", text: "text-4xl", sub: "text-sm", px: 56 },
   };
 
   const currentSize = sizeMap[size] || sizeMap.md;
 
   if (variant === "symbol") {
-    return <DocuMindSymbol className={`${currentSize.symbol} ${className}`} id={id} />;
+    return (
+      <DocuMindSymbol
+        className={`${currentSize.symbol} ${className}`}
+        id={id}
+        style={{ width: currentSize.px, height: currentSize.px }}
+      />
+    );
   }
 
   return (
     <div className={`inline-flex items-center gap-2.5 select-none ${className}`}>
-      <DocuMindSymbol className={currentSize.symbol} id={id} />
+      <DocuMindSymbol
+        className={currentSize.symbol}
+        id={id}
+        style={{ width: currentSize.px, height: currentSize.px }}
+      />
       <div className="flex flex-col justify-center">
         <div className={`font-bold tracking-tight leading-none ${currentSize.text} flex items-center`}>
           <span className="text-[#071A3D]">Docu</span>
